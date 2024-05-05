@@ -1,13 +1,18 @@
+use axum::extract::State;
 use axum::response::IntoResponse;
 use axum::routing::post;
 use axum::Router;
 use axum_extra::extract::JsonLines;
 use futures_util::StreamExt;
 use serde::Deserialize;
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
+use sqlx::types::Json;
+use std::str::FromStr;
+use tracing::error;
 
 type Object = serde_json::Map<String, serde_json::Value>;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, sqlx::Decode, sqlx::Encode)]
 pub struct LogEvent {
     pub timestamp: f64,
     pub logentry: LogEntry,
@@ -45,19 +50,80 @@ pub struct LogEntry {
     pub unknown: Object,
 }
 
+#[derive(Debug, Clone)]
+struct AppState {
+    pub pool: SqlitePool,
+}
+
 #[tokio::main]
-async fn main() {
-    let app = Router::new().route("/api/*key", post(handle_post));
+async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt::init();
+
+    let connect_opts = SqliteConnectOptions::from_str("sqlite://data/data.db")?
+        .journal_mode(SqliteJournalMode::Wal)
+        .create_if_missing(true);
+
+    let pool = SqlitePoolOptions::default()
+        .connect_with(connect_opts)
+        .await?;
+
+    sqlx::migrate!("./migrations").run(&pool).await?;
+    println!("Database created");
+
+    let app_state = AppState { pool };
+
+    let app = Router::new()
+        .route("/api/*key", post(handle_post))
+        .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
+
+    Ok(())
 }
 
-async fn handle_post(mut stream: JsonLines<LogEvent>) -> impl IntoResponse {
+async fn handle_post(
+    State(app_state): State<AppState>,
+    mut stream: JsonLines<LogEvent>,
+) -> impl IntoResponse {
     while let Some(value) = stream.next().await {
         if let Some(event) = value.ok() {
-            dbg!(event);
+            if let Err(error) = insert_event_into_db(&app_state.pool, event).await {
+                error!("Failed to insert log entry into database => {error}");
+            };
         }
     }
     ""
+}
+
+async fn insert_event_into_db(pool: &SqlitePool, event: LogEvent) -> anyhow::Result<()> {
+    let mut conn = pool.acquire().await?;
+
+    let sdk = Json::from(event.sdk);
+    let user = Json::from(event.user);
+    let tags = Json::from(event.tags);
+    let contexts = Json::from(event.contexts);
+    let extra = Json::from(event.extra);
+    let breadcrumbs = Json::from(event.breadcrumbs);
+
+    sqlx::query_file!(
+        "./sql/insert_sentry_log.sql",
+        event.timestamp,
+        event.logentry.message,
+        event.level,
+        event.environment,
+        event.event_id,
+        event.platform,
+        event.server_name,
+        sdk,
+        user,
+        tags,
+        contexts,
+        extra,
+        breadcrumbs
+    )
+    .execute(&mut *conn)
+    .await?;
+
+    Ok(())
 }

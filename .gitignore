@@ -1,3 +1,5 @@
 /target
 
 sentry-cli.exe
+output.log
+/.sqlx
