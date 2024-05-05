@@ -13,11 +13,12 @@ use tracing::{error, info};
 type Object = serde_json::Map<String, serde_json::Value>;
 
 mod templates;
+mod time;
 mod ui;
 
 #[derive(Debug, Deserialize, sqlx::Decode, sqlx::Encode)]
 pub struct LogEvent {
-    pub timestamp: f64,
+    pub timestamp: crate::time::Timestamp,
     pub logentry: LogEntry,
     pub contexts: Object,
     pub environment: String,
@@ -28,8 +29,8 @@ pub struct LogEvent {
     pub user: Object,
     #[serde(default = "empty_object")]
     pub extra: Object,
-    #[serde(default = "empty_object")]
-    pub breadcrumbs: Object,
+    #[serde(default = "empty_json")]
+    pub breadcrumbs: serde_json::Value,
     #[serde(default = "empty_object")]
     pub tags: Object,
     #[serde(default = "default_log_level")]
@@ -44,6 +45,10 @@ fn default_log_level() -> String {
 
 fn empty_object() -> Object {
     serde_json::Map::new()
+}
+
+fn empty_json() -> serde_json::Value {
+    serde_json::Value::Object(Object::new())
 }
 
 #[derive(Debug, Deserialize)]
@@ -62,7 +67,10 @@ struct AppState {
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
-    let connect_opts = SqliteConnectOptions::from_str("sqlite://data/data.db")?
+    let db_path = std::env::var("SIMPLE_SENTRY_DB").unwrap_or("sqlite://data/data.db".to_string());
+    info!("Using database at: {db_path}");
+
+    let connect_opts = SqliteConnectOptions::from_str(&db_path)?
         .journal_mode(SqliteJournalMode::Wal)
         .create_if_missing(true);
 
@@ -88,18 +96,30 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+// async fn handle_post(
+//     State(app_state): State<AppState>,
+//     mut stream: JsonLines<serde_json::Value>,
+// ) -> impl IntoResponse {
+//     while let Some(value) = stream.next().await {
+//         println!("{}", &value.unwrap());
+//     }
+
+//     "{}"
+// }
+
 async fn handle_post(
     State(app_state): State<AppState>,
     mut stream: JsonLines<LogEvent>,
 ) -> impl IntoResponse {
     while let Some(value) = stream.next().await {
+        dbg!(&value);
         if let Some(event) = value.ok() {
             if let Err(error) = insert_event_into_db(&app_state.pool, event).await {
                 error!("Failed to insert log entry into database => {error}");
             };
         }
     }
-    ""
+    "{}"
 }
 
 async fn insert_event_into_db(pool: &SqlitePool, event: LogEvent) -> anyhow::Result<()> {
@@ -111,10 +131,11 @@ async fn insert_event_into_db(pool: &SqlitePool, event: LogEvent) -> anyhow::Res
     let contexts = Json::from(event.contexts);
     let extra = Json::from(event.extra);
     let breadcrumbs = Json::from(event.breadcrumbs);
+    let timestamp = event.timestamp.to_unix();
 
     sqlx::query_file!(
         "./sql/insert_sentry_log.sql",
-        event.timestamp,
+        timestamp,
         event.logentry.message,
         event.level,
         event.environment,
