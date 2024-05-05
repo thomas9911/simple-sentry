@@ -1,6 +1,6 @@
 use axum::extract::State;
 use axum::response::IntoResponse;
-use axum::routing::post;
+use axum::routing::{get, post};
 use axum::Router;
 use axum_extra::extract::JsonLines;
 use futures_util::StreamExt;
@@ -8,9 +8,12 @@ use serde::Deserialize;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 use sqlx::types::Json;
 use std::str::FromStr;
-use tracing::error;
+use tracing::{error, info};
 
 type Object = serde_json::Map<String, serde_json::Value>;
+
+mod templates;
+mod ui;
 
 #[derive(Debug, Deserialize, sqlx::Decode, sqlx::Encode)]
 pub struct LogEvent {
@@ -68,11 +71,14 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     sqlx::migrate!("./migrations").run(&pool).await?;
-    println!("Database created");
+    info!("Database created");
 
     let app_state = AppState { pool };
 
     let app = Router::new()
+        .route("/", get(ui::get_home))
+        .route("/ui/data", get(ui::get_data))
+        .route("/ui/data/contents", get(ui::get_data_contents))
         .route("/api/*key", post(handle_post))
         .with_state(app_state);
 
