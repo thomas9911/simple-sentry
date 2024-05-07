@@ -9,6 +9,6 @@ FROM
 WHERE
     id < ?
 ORDER BY
-    "timestamp" DESC
+    id DESC
 LIMIT
     ?;

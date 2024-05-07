@@ -1,4 +1,5 @@
-{% for entry in entries %} {% if loop.last %}
+{% for entry in entries %} 
+{% if loop.last %}
 <tr
   hx-get="/ui/data/contents?pointer={{ entry.id }}"
   hx-trigger="revealed"
