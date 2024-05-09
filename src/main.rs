@@ -1,4 +1,4 @@
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Router;
@@ -98,7 +98,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/", get(ui::get_home))
         .route("/ui/data", get(ui::get_data))
         .route("/ui/data/contents", get(ui::get_data_contents))
-        .route("/api/*key", post(handle_post))
+        .route("/api/:project_id/envelope/", post(handle_post))
         .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
@@ -111,12 +111,13 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn handle_post(
+    Path(project_id): Path<i64>,
     State(app_state): State<AppState>,
     mut stream: JsonLines<LogEvent>,
 ) -> impl IntoResponse {
     while let Some(value) = stream.next().await {
         if let Some(event) = value.ok() {
-            if let Err(error) = insert_event_into_db(&app_state.pool, event).await {
+            if let Err(error) = insert_event_into_db(&app_state.pool, event, project_id).await {
                 error!("Failed to insert log entry into database => {error}");
             };
         }
@@ -125,7 +126,11 @@ async fn handle_post(
     "{}"
 }
 
-async fn insert_event_into_db(pool: &SqlitePool, event: LogEvent) -> anyhow::Result<()> {
+async fn insert_event_into_db(
+    pool: &SqlitePool,
+    event: LogEvent,
+    project_id: i64,
+) -> anyhow::Result<()> {
     let mut conn = pool.acquire().await?;
 
     let sdk = Json::from(event.sdk);
@@ -151,8 +156,13 @@ async fn insert_event_into_db(pool: &SqlitePool, event: LogEvent) -> anyhow::Res
         None
     };
 
+    sqlx::query_file!("./sql/insert_project.sql", project_id, None::<String>)
+        .execute(&mut *conn)
+        .await?;
+
     sqlx::query_file!(
         "./sql/insert_sentry_log.sql",
+        project_id,
         timestamp,
         message,
         event.level,

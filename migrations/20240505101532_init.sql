@@ -1,5 +1,6 @@
 CREATE TABLE sentry_log(
    id INTEGER PRIMARY KEY,
+   project_id INTEGER NOT NULL,
    timestamp INTEGER NOT NULL,
    logentry TEXT NOT NULL,
    level TEXT NOT NULL,

@@ -2,6 +2,8 @@ use askama_axum::{IntoResponse, Response};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use serde::Deserialize;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 use tracing::error;
 
 use crate::{templates, AppState};
@@ -22,6 +24,29 @@ pub struct LogListItem {
     pub level: String,
 }
 
+pub struct LogListItemView {
+    pub id: i64,
+    pub timestamp: String,
+    pub logentry: String,
+    pub event_id: String,
+    pub level: String,
+}
+
+impl From<LogListItem> for LogListItemView {
+    fn from(value: LogListItem) -> Self {
+        LogListItemView {
+            id: value.id,
+            timestamp: OffsetDateTime::from_unix_timestamp(value.timestamp)
+                .unwrap()
+                .format(&Rfc3339)
+                .unwrap(),
+            logentry: value.logentry,
+            event_id: value.event_id,
+            level: value.level,
+        }
+    }
+}
+
 pub async fn get_home() -> impl IntoResponse {
     templates::HomeTemplate {}
 }
@@ -39,7 +64,10 @@ pub async fn get_data_contents(
         .fetch_all(&app_state.pool)
         .await
     {
-        Ok(entries) => templates::DataContentsTemplate { entries }.into_response(),
+        Ok(entries) => templates::DataContentsTemplate {
+            entries: entries.into_iter().map(LogListItemView::from).collect(),
+        }
+        .into_response(),
         Err(error) => {
             error!("fetching data failed => {error}");
             (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error").into_response()
