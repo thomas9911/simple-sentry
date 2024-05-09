@@ -12,5 +12,6 @@ CREATE TABLE sentry_log(
    tags TEXT,
    contexts TEXT,
    extra TEXT,
-   breadcrumbs TEXT
+   breadcrumbs TEXT,
+   exception TEXT
 );

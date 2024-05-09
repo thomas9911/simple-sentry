@@ -17,15 +17,33 @@ mod time;
 mod ui;
 
 #[derive(Debug, Deserialize, sqlx::Decode, sqlx::Encode)]
+pub struct Message {
+    pub message: serde_json::Value,
+    pub formatted: String,
+    pub params: serde_json::Value
+}
+
+
+#[derive(Debug, Deserialize)]
+pub struct LogEntry {
+    pub message: String,
+    #[serde(flatten)]
+    pub unknown: Object,
+}
+
+
+#[derive(Debug, Deserialize, sqlx::Decode, sqlx::Encode)]
 pub struct LogEvent {
     pub timestamp: crate::time::Timestamp,
-    pub logentry: LogEntry,
+    pub logentry: Option<LogEntry>,
+    pub message: Option<Message>,
     pub contexts: Object,
-    pub environment: String,
+    pub environment: Option<String>,
     pub event_id: String,
     pub platform: String,
     pub sdk: Object,
-    pub server_name: String,
+    pub server_name: Option<String>,
+    pub exception: Option<serde_json::Value>,
     pub user: Object,
     #[serde(default = "empty_object")]
     pub extra: Object,
@@ -35,6 +53,7 @@ pub struct LogEvent {
     pub tags: Object,
     #[serde(default = "default_log_level")]
     pub level: String,
+    pub fingerprint: Option<Vec<String>>,
     #[serde(flatten)]
     pub unknown: Object,
 }
@@ -49,13 +68,6 @@ fn empty_object() -> Object {
 
 fn empty_json() -> serde_json::Value {
     serde_json::Value::Object(Object::new())
-}
-
-#[derive(Debug, Deserialize)]
-pub struct LogEntry {
-    pub message: String,
-    #[serde(flatten)]
-    pub unknown: Object,
 }
 
 #[derive(Debug, Clone)]
@@ -96,29 +108,19 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-// async fn handle_post(
-//     State(app_state): State<AppState>,
-//     mut stream: JsonLines<serde_json::Value>,
-// ) -> impl IntoResponse {
-//     while let Some(value) = stream.next().await {
-//         println!("{}", &value.unwrap());
-//     }
-
-//     "{}"
-// }
-
 async fn handle_post(
     State(app_state): State<AppState>,
     mut stream: JsonLines<LogEvent>,
 ) -> impl IntoResponse {
     while let Some(value) = stream.next().await {
-        dbg!(&value);
         if let Some(event) = value.ok() {
             if let Err(error) = insert_event_into_db(&app_state.pool, event).await {
                 error!("Failed to insert log entry into database => {error}");
             };
         }
     }
+
+
     "{}"
 }
 
@@ -131,12 +133,27 @@ async fn insert_event_into_db(pool: &SqlitePool, event: LogEvent) -> anyhow::Res
     let contexts = Json::from(event.contexts);
     let extra = Json::from(event.extra);
     let breadcrumbs = Json::from(event.breadcrumbs);
+    let exception_json = Json::from(&event.exception);
     let timestamp = event.timestamp.to_unix();
+
+    let message = if let Some(logentry) = event.logentry {
+        Some(logentry.message)
+    } else if let Some(message) = event.message {
+        Some(message.formatted.to_string())
+    } else if let Some(ref exception) = event.exception {
+        if let Some(single_line) = exception.pointer("/0/value").map(|x| x.as_str()).flatten() {
+            Some(single_line.to_string())
+        } else {
+            Some(exception.to_string())
+        }
+    } else {
+        None
+    };
 
     sqlx::query_file!(
         "./sql/insert_sentry_log.sql",
         timestamp,
-        event.logentry.message,
+        message,
         event.level,
         event.environment,
         event.event_id,
@@ -147,7 +164,8 @@ async fn insert_event_into_db(pool: &SqlitePool, event: LogEvent) -> anyhow::Res
         tags,
         contexts,
         extra,
-        breadcrumbs
+        breadcrumbs,
+        exception_json
     )
     .execute(&mut *conn)
     .await?;
