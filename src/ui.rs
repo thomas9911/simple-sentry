@@ -35,7 +35,7 @@ pub async fn get_data_contents(
     State(app_state): State<AppState>,
 ) -> Response {
     let pointer = parameters.pointer.unwrap_or(START_POINTER);
-    match sqlx::query_file_as!(LogListItem, "./sql/list_sentry_log.sql", pointer, 5)
+    match sqlx::query_file_as!(LogListItem, "./sql/list_sentry_log.sql", pointer, 20)
         .fetch_all(&app_state.pool)
         .await
     {

@@ -8,6 +8,7 @@ use serde::Deserialize;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 use sqlx::types::Json;
 use std::str::FromStr;
+use tokio::signal::ctrl_c;
 use tracing::{error, info};
 
 type Object = serde_json::Map<String, serde_json::Value>;
@@ -20,9 +21,8 @@ mod ui;
 pub struct Message {
     pub message: serde_json::Value,
     pub formatted: String,
-    pub params: serde_json::Value
+    pub params: serde_json::Value,
 }
-
 
 #[derive(Debug, Deserialize)]
 pub struct LogEntry {
@@ -30,7 +30,6 @@ pub struct LogEntry {
     #[serde(flatten)]
     pub unknown: Object,
 }
-
 
 #[derive(Debug, Deserialize, sqlx::Decode, sqlx::Encode)]
 pub struct LogEvent {
@@ -103,7 +102,10 @@ async fn main() -> anyhow::Result<()> {
         .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app)
+        .with_graceful_shutdown(async { ctrl_c().await.unwrap() })
+        .await
+        .unwrap();
 
     Ok(())
 }
@@ -119,7 +121,6 @@ async fn handle_post(
             };
         }
     }
-
 
     "{}"
 }

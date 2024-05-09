@@ -1,3 +1,6 @@
+default:
+  @just --choose
+
 fmt:
     cargo +nightly fmt
 
@@ -5,6 +8,21 @@ dev-db:
     sqlx database create
     sqlx migrate run
     cargo sqlx prepare
+
+send-event-seed:
+    @just send-event-seed-0
+    @just send-event-seed-0
+    @just send-event-seed-0
+    @just send-event-seed-0
+    @just send-event-seed-0
+
+[private]
+send-event-seed-0: 
+    @just send-event-all
+    @just send-event-all
+    @just send-event-all
+    @just send-event-all
+    @just send-event-all
 
 send-event-all: send-event send-event-file send-event-extra
 
