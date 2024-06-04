@@ -98,6 +98,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/", get(ui::get_home))
         .route("/ui/data", get(ui::get_data))
         .route("/ui/data/contents", get(ui::get_data_contents))
+        .route("/ui/data/contents/:content_id", get(ui::get_data_content))
         .route("/api/:project_id/envelope/", post(handle_post))
         .with_state(app_state);
 

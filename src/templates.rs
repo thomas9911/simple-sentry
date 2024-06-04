@@ -1,6 +1,6 @@
 use askama::Template;
 
-use crate::ui::LogListItemView;
+use crate::ui::{LogGettItemView, LogListItemView};
 
 #[derive(Template)]
 #[template(path = "home.html")]
@@ -14,4 +14,10 @@ pub struct DataTemplate {}
 #[template(path = "data_contents.html")]
 pub struct DataContentsTemplate {
     pub entries: Vec<LogListItemView>,
+}
+
+#[derive(Template)]
+#[template(path = "data_content.html")]
+pub struct DataContentTemplate {
+    pub entry: LogGettItemView,
 }

@@ -1,17 +1,18 @@
-{% for entry in entries %} 
-{% if loop.last %}
+{% for entry in entries %} {% if loop.last %}
 <tr
   hx-get="/ui/data/contents?pointer={{ entry.id }}"
   hx-trigger="revealed"
   hx-swap="afterend"
 >
   {% else %}
+</tr>
+
 <tr>
   {% endif %}
-
   <th>{{ entry.id }}</th>
   <td>{{ entry.timestamp }}</td>
   <td>{{ entry.level }}</td>
   <td>{{ entry.logentry }}</td>
+  <td><a href="/ui/data/contents/{{ entry.id }}" class="tag">View</a></td>
 </tr>
 {% endfor %}

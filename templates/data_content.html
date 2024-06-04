@@ -1,0 +1,15 @@
+{% extends "base.html" %} 
+
+{% block content %}
+
+<a href="/" class="button">Home</a>
+
+
+<div class="content is-large">{{ entry.logentry }}</div>
+<div class="content">{{ entry.timestamp }}</div>
+<div class="content"><span class="tag is-medium">{{ entry.level }}</span></div>
+<div class="content"><pre>{{ entry.environment }}</pre></div>
+<div class="content"><pre>{{ entry.tags }}</pre></div>
+<div class="content"><pre>{{ entry.breadcrumbs }}</pre></div>
+<div class="content"><pre>{{ entry.exception }}</pre></div>
+{% endblock %}
