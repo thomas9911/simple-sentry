@@ -1,6 +1,6 @@
 use askama_axum::Response;
 use axum::extract::{Path, State};
-use axum::http::{status, StatusCode};
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Form, Router};
@@ -124,6 +124,7 @@ async fn main() -> anyhow::Result<()> {
         .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+    info!("Running on http://localhost:8080");
     axum::serve(listener, app)
         .with_graceful_shutdown(async { ctrl_c().await.unwrap() })
         .await
@@ -261,9 +262,4 @@ async fn refresh_project_state(app_state: AppState) -> Result<(), anyhow::Error>
     *projects_state = projects;
 
     Ok(())
-}
-
-fn format_json(json_string: &str) -> Result<String, serde_json::Error> {
-    let data: serde_json::Value = serde_json::from_str(json_string)?;
-    serde_json::to_string_pretty(&data)
 }
