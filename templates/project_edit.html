@@ -1,0 +1,9 @@
+<tr>
+    <td> {{ project.id }}</td>
+    <td><input class="input" name='name' value='{{project.name}}'></td>
+    <td>
+      <button class="button is-danger" hx-put="/ui/projects/{{project.id}}/edit" hx-include="closest tr">
+        Save
+      </button>
+    </td>
+  </tr>

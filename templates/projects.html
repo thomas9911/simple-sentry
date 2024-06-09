@@ -1,0 +1,40 @@
+{% extends "base.html" %} 
+
+{% block content %}
+<a href="/" class="button">Home</a>
+
+<table class="table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody hx-target="closest tr" hx-swap="outerHTML">
+        {% for entry in projects %}
+        <tr>
+          <th>{% if let Some(id) = entry.id %}
+          {{ id }}
+          {% else %}
+          {% endif %}</th>
+          <td>{% if let Some(name) = entry.name %}
+          {{ name }}
+          {% else %}
+          {% endif %}</td>
+          <td>
+          <button class="btn btn-danger"
+            hx-get="/ui/projects/{{entry.id.unwrap()}}/edit"
+            hx-trigger="edit"
+            onClick="htmx.trigger(this, 'edit')">
+            Edit
+          </button>
+        </td>
+        </tr>
+        {% endfor %}
+        
+    </tbody>
+  </table>
+  
+
+{% endblock %}

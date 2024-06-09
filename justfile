@@ -4,6 +4,9 @@ default:
 fmt:
     cargo +nightly fmt
 
+run:
+    cargo run --release
+
 dev-db:
     sqlx database create
     sqlx migrate run

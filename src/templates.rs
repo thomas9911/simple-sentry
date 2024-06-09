@@ -1,6 +1,7 @@
 use askama::Template;
 
-use crate::ui::{LogGettItemView, LogListItemView};
+use crate::ui::{LogGettItemView, LogListItemView, ProjectItemView};
+use crate::ProjectItem;
 
 #[derive(Template)]
 #[template(path = "home.html")]
@@ -20,4 +21,16 @@ pub struct DataContentsTemplate {
 #[template(path = "data_content.html")]
 pub struct DataContentTemplate {
     pub entry: LogGettItemView,
+}
+
+#[derive(Template)]
+#[template(path = "projects.html")]
+pub struct ProjectsTemplate<'a> {
+    pub projects: &'a [ProjectItem],
+}
+
+#[derive(Template)]
+#[template(path = "project_edit.html")]
+pub struct ProjectEditTemplate {
+    pub project: ProjectItemView,
 }

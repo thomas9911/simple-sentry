@@ -1,5 +1,6 @@
 SELECT
     id,
+    project_id,
     "timestamp",
     logentry,
     "level",

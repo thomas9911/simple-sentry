@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1 class="title">Hello World</h1>
+<h1 class="title">Simple Sentry</h1>
+<a href="/ui/projects">View Projects</a>
 <div hx-get="/ui/data" hx-trigger="load">..loading</div>
 {% endblock %}
