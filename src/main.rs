@@ -1,6 +1,6 @@
 use askama_axum::Response;
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
+use axum::http::{Method, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Form, Router};
@@ -13,6 +13,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::signal::ctrl_c;
 use tokio::sync::RwLock;
+use tower::ServiceBuilder;
+use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info};
 
 type Object = serde_json::Map<String, serde_json::Value>;
@@ -47,6 +49,7 @@ pub struct LogEvent {
     pub sdk: Object,
     pub server_name: Option<String>,
     pub exception: Option<serde_json::Value>,
+    #[serde(default = "empty_object")]
     pub user: Object,
     #[serde(default = "empty_object")]
     pub extra: Object,
@@ -110,6 +113,13 @@ async fn main() -> anyhow::Result<()> {
         projects: Arc::new(RwLock::new(projects)),
     };
 
+    let cors = CorsLayer::new()
+        // allow `GET` and `POST` when accessing the resource
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers(Any)
+        // allow requests from any origin
+        .allow_origin(Any);
+
     let app = Router::new()
         .route("/", get(ui::get_home))
         .route("/ui/data", get(ui::get_data))
@@ -121,6 +131,7 @@ async fn main() -> anyhow::Result<()> {
             get(ui::edit_project).put(update_project),
         )
         .route("/api/:project_id/envelope/", post(handle_post))
+        .route_layer(ServiceBuilder::new().layer(cors))
         .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
@@ -140,7 +151,7 @@ async fn handle_post(
 ) -> impl IntoResponse {
     while let Some(value) = stream.next().await {
         if let Some(event) = value.ok() {
-            if let Err(error) = insert_event_into_db(&app_state.pool, event, project_id).await {
+            if let Err(error) = insert_event_into_db(app_state.clone(), event, project_id).await {
                 error!("Failed to insert log entry into database => {error}");
             };
         }
@@ -150,11 +161,11 @@ async fn handle_post(
 }
 
 async fn insert_event_into_db(
-    pool: &SqlitePool,
+    app_state: AppState,
     event: LogEvent,
     project_id: i64,
 ) -> anyhow::Result<()> {
-    let mut conn = pool.acquire().await?;
+    let mut conn = app_state.pool.acquire().await?;
 
     let sdk = Json::from(event.sdk);
     let user = Json::from(event.user);
@@ -170,7 +181,15 @@ async fn insert_event_into_db(
     } else if let Some(message) = event.message {
         Some(message.formatted.to_string())
     } else if let Some(ref exception) = event.exception {
-        if let Some(single_line) = exception.pointer("/0/value").map(|x| x.as_str()).flatten() {
+        if let Some(single_line) = exception
+            .pointer("/values/0/value")
+            .map(|x| x.as_str())
+            .flatten()
+        {
+            Some(single_line.to_string())
+        } else if let Some(single_line) =
+            exception.pointer("/0/value").map(|x| x.as_str()).flatten()
+        {
             Some(single_line.to_string())
         } else {
             Some(exception.to_string())
@@ -179,9 +198,18 @@ async fn insert_event_into_db(
         None
     };
 
-    sqlx::query_file!("./sql/insert_project.sql", project_id, None::<String>)
+    let response = sqlx::query_file!("./sql/insert_project.sql", project_id, None::<String>)
         .execute(&mut *conn)
         .await?;
+
+    if response.rows_affected() != 0 {
+        match refresh_project_state(app_state).await {
+            Ok(_) => (),
+            Err(err) => {
+                error!("Update project state failed: {:?}", err);
+            }
+        };
+    }
 
     sqlx::query_file!(
         "./sql/insert_sentry_log.sql",
