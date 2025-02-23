@@ -1,6 +1,6 @@
 use askama_axum::Response;
 use axum::extract::{Path, State};
-use axum::http::{Method, StatusCode};
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Form, Router};
@@ -19,9 +19,9 @@ use tracing::{error, info};
 
 type Object = serde_json::Map<String, serde_json::Value>;
 
-mod templates;
-mod time;
-mod ui;
+pub mod templates;
+pub mod time;
+pub mod ui;
 
 #[derive(Debug, Deserialize, sqlx::Decode, sqlx::Encode)]
 pub struct Message {
@@ -77,7 +77,7 @@ fn empty_json() -> serde_json::Value {
 }
 
 #[derive(Debug, Clone)]
-struct AppState {
+pub struct AppState {
     pub pool: SqlitePool,
     pub projects: Arc<RwLock<Vec<ProjectItem>>>,
 }
