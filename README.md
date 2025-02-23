@@ -6,6 +6,18 @@ Normal sentry is opensource and self-hostable. However you need quite some resou
 
 This project provides a very basic setup for running sentry-like service. It's not meant to be used in production, but rather for simple local development.
 
+## optionally create projects from env variable on startup
+
+```
+SIMPLE_SENTRY_PROJECTS='1=project1;2=project2;3=project3' 
+```
+
+project names can even have '=' signs in their name like:
+
+```
+SIMPLE_SENTRY_PROJECTS='1=project1;2=project=2' 
+```
+
 ## dev
 
 It uses `just` cli to run some common tasks.

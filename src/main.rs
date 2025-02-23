@@ -100,6 +100,14 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!("./migrations").run(&pool).await?;
     info!("Database created");
 
+    if let Ok(projects_init) = std::env::var("SIMPLE_SENTRY_PROJECTS") {
+        info!("Initializing projects from SIMPLE_SENTRY_PROJECTS");
+        let upserted_projects = parse_init_projects(&projects_init)?;
+        create_or_ignore_projects(&pool, upserted_projects).await?;
+    } else {
+        info!("SIMPLE_SENTRY_PROJECTS not set, skipping project initialization");
+    }
+
     let projects = match list_all_projects(&pool).await {
         Ok(projects) => projects,
         Err(err) => {
@@ -286,6 +294,53 @@ async fn refresh_project_state(app_state: AppState) -> Result<(), anyhow::Error>
     let mut projects_state = app_state.projects.write().await;
 
     *projects_state = projects;
+
+    Ok(())
+}
+
+fn parse_init_projects(projects_init: &str) -> Result<Vec<ProjectItem>, anyhow::Error> {
+    if projects_init.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let mut projects = Vec::new();
+    for project_line in projects_init.split(";") {
+        if let Some((key, value)) = project_line.split_once('=') {
+            let id: i64 = if let Ok(key) = key.trim().parse() {
+                key
+            } else {
+                error!("init project has invalid config id: {}", key);
+                continue;
+            };
+            let name = value.trim().to_string();
+            if name.is_empty() {
+                error!(
+                    "init project has invalid config name of id {}, name is empty",
+                    key
+                );
+                continue;
+            }
+
+            projects.push(ProjectItem {
+                id: Some(id),
+                name: Some(name),
+            })
+        }
+    }
+
+    Ok(projects)
+}
+
+async fn create_or_ignore_projects(
+    conn: &SqlitePool,
+    to_be_inserted_projects: Vec<ProjectItem>,
+) -> Result<(), anyhow::Error> {
+    // probably not that many projects, just do one by one for now
+    for project in to_be_inserted_projects {
+        sqlx::query_file!("./sql/insert_project.sql", project.id, project.name)
+            .execute(conn)
+            .await?;
+    }
 
     Ok(())
 }
