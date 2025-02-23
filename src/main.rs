@@ -114,10 +114,8 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let cors = CorsLayer::new()
-        // allow `GET` and `POST` when accessing the resource
-        .allow_methods([Method::GET, Method::POST])
+        .allow_methods(Any)
         .allow_headers(Any)
-        // allow requests from any origin
         .allow_origin(Any);
 
     let app = Router::new()

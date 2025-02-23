@@ -1,7 +1,8 @@
 use askama_axum::{IntoResponse, Response};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use serde::Deserialize;
+use serde::{de, Deserialize, Deserializer, Serialize};
+use sqlx::{Pool, Sqlite};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use tracing::error;
@@ -9,10 +10,28 @@ use tracing::error;
 use crate::{templates, AppState, ProjectItem};
 
 const START_POINTER: i64 = 9223372036854775807;
+const ITERATION_SIZE: u32 = 5;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct DataContentsParameters {
     pointer: Option<i64>,
+    #[serde(default, deserialize_with = "empty_string_as_none")]
+    project: Option<i64>,
+}
+
+fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
+{
+    let opt = Option::<String>::deserialize(de)?;
+    match opt.as_deref() {
+        None | Some("") => Ok(None),
+        Some(s) => std::str::FromStr::from_str(s)
+            .map_err(de::Error::custom)
+            .map(Some),
+    }
 }
 
 #[derive(Debug, sqlx::Decode, sqlx::Encode)]
@@ -139,20 +158,47 @@ pub async fn get_home() -> impl IntoResponse {
     templates::HomeTemplate {}
 }
 
-pub async fn get_data() -> impl IntoResponse {
-    templates::DataTemplate {}
+pub async fn get_data(State(app_state): State<AppState>) -> impl IntoResponse {
+    let reading = app_state.projects.read().await;
+
+    let projects: Vec<_> = reading.iter().map(ProjectItemView::from).collect();
+    templates::DataTemplate { projects }
+}
+
+async fn get_data_query(
+    pool: &Pool<Sqlite>,
+    parameters: DataContentsParameters,
+) -> sqlx::Result<Vec<LogListItem>> {
+    let pointer = parameters.pointer.unwrap_or(START_POINTER);
+    if let Some(project_id) = parameters.project {
+        return sqlx::query_file_as!(
+            LogListItem,
+            "./sql/list_sentry_log_project_filter.sql",
+            pointer,
+            project_id,
+            ITERATION_SIZE
+        )
+        .fetch_all(pool)
+        .await;
+    };
+
+    sqlx::query_file_as!(
+        LogListItem,
+        "./sql/list_sentry_log.sql",
+        pointer,
+        ITERATION_SIZE
+    )
+    .fetch_all(pool)
+    .await
 }
 
 pub async fn get_data_contents(
     Query(parameters): Query<DataContentsParameters>,
     State(app_state): State<AppState>,
 ) -> Response {
-    let pointer = parameters.pointer.unwrap_or(START_POINTER);
-    match sqlx::query_file_as!(LogListItem, "./sql/list_sentry_log.sql", pointer, 20)
-        .fetch_all(&app_state.pool)
-        .await
-    {
+    match get_data_query(&app_state.pool, parameters).await {
         Ok(entries) => {
+            // dbg!(&entries);
             let projects = app_state.projects.read().await;
 
             templates::DataContentsTemplate {

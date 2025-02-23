@@ -9,7 +9,9 @@ pub struct HomeTemplate {}
 
 #[derive(Template)]
 #[template(path = "data.html")]
-pub struct DataTemplate {}
+pub struct DataTemplate {
+    pub projects: Vec<ProjectItemView>,
+}
 
 #[derive(Template)]
 #[template(path = "data_contents.html")]

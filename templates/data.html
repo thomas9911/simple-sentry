@@ -1,3 +1,12 @@
+<div class="select is-rounded">
+  <select id="project-selector" onchange="document.getElementById('data-body').innerHTML = ''; htmx.trigger('#data-body', 'pageLoaded')">
+    <option value="">Select Project</option>
+    {% for project in projects %}
+    <option value="{{project.id}}">{{project.name}}</option>
+    {% endfor %}
+  </select>
+</div>
+
 <table class="table">
   <thead>
     <tr>
@@ -17,7 +26,12 @@
       <th>Message</th>
     </tr>
   </tfoot> -->
-  <tbody hx-get="/ui/data/contents" hx-trigger="load" hx-swap="innerHTML">
-
-  </tbody>
+  <tbody
+    id="data-body"
+    hx-get="/ui/data/contents"
+    hx-trigger="load, pageLoaded"
+    hx-swap="innerHTML"
+    hx-vals='js:{project: htmx.find("#project-selector").value}'
+    hx-on::before-request="console.log(event)"
+  ></tbody>
 </table>
