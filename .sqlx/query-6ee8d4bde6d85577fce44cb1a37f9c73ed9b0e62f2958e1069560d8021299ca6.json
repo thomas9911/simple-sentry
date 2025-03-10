@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO\n    sentry_log (\n        project_id,\n        timestamp,\n        logentry,\n        level,\n        environment,\n        event_id,\n        platform,\n        server_name,\n        sdk,\n        user,\n        tags,\n        contexts,\n        extra,\n        breadcrumbs,\n        exception\n    )\nVALUES\n    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 15
+    },
+    "nullable": []
+  },
+  "hash": "6ee8d4bde6d85577fce44cb1a37f9c73ed9b0e62f2958e1069560d8021299ca6"
+}

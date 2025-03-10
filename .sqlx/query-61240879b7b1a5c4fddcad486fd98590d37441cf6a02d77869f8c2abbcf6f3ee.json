@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n    logentry,\n    timestamp,\n    level,\n    environment,\n    tags,\n    breadcrumbs,\n    exception\nFROM\n    sentry_log\nWHERE\n    id = ?;",
+  "describe": {
+    "columns": [
+      {
+        "name": "logentry",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "timestamp",
+        "ordinal": 1,
+        "type_info": "Int64"
+      },
+      {
+        "name": "level",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "environment",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "tags",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "breadcrumbs",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "exception",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "61240879b7b1a5c4fddcad486fd98590d37441cf6a02d77869f8c2abbcf6f3ee"
+}

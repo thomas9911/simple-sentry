@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR IGNORE INTO\n    project (id, name)\nVALUES\n    (?, ?);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "7ccb547517648c5a95f35fcc92a036b384e8904570d17b50c0948754680aaa8d"
+}

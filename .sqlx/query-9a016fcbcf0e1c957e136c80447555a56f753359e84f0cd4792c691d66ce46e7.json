@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n    id,\n    project_id,\n    \"timestamp\",\n    logentry,\n    \"level\",\n    event_id\nFROM\n    sentry_log\nWHERE\n    id < ? AND project_id = ?\nORDER BY\n    id DESC\nLIMIT\n    ?;\n",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      },
+      {
+        "name": "project_id",
+        "ordinal": 1,
+        "type_info": "Int64"
+      },
+      {
+        "name": "timestamp",
+        "ordinal": 2,
+        "type_info": "Int64"
+      },
+      {
+        "name": "logentry",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "level",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "event_id",
+        "ordinal": 5,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9a016fcbcf0e1c957e136c80447555a56f753359e84f0cd4792c691d66ce46e7"
+}

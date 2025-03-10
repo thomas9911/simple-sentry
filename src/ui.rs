@@ -10,7 +10,7 @@ use tracing::error;
 use crate::{templates, AppState, ProjectItem};
 
 const START_POINTER: i64 = 9223372036854775807;
-const ITERATION_SIZE: u32 = 5;
+const ITERATION_SIZE: u32 = 20;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DataContentsParameters {
