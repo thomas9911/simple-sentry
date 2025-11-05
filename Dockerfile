@@ -13,7 +13,7 @@ FROM chef AS builder
 ARG TARGETPLATFORM
 RUN case "$TARGETPLATFORM" in \
     "linux/amd64") echo "x86_64-unknown-linux-musl" > /tmp/rust-target ;; \
-    "linux/arm64") curl -LO https://musl.cc/aarch64-linux-musl-cross.tgz && \
+    "linux/arm64") curl -LO --ipv4 https://musl.cc/aarch64-linux-musl-cross.tgz && \
     tar -xzf aarch64-linux-musl-cross.tgz && mv aarch64-linux-musl-cross/bin/* /usr/local/bin/ && \
     echo "aarch64-unknown-linux-musl" > /tmp/rust-target ;; \
     *) echo "Unsupported platform: $TARGETPLATFORM" && exit 1 ;; \
