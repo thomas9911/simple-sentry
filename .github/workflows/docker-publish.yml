@@ -33,7 +33,7 @@ jobs:
           - platform: linux/amd64
             runs_on: ubuntu-latest
           - platform: linux/arm64
-            runs_on: ubuntu-latest-arm
+            runs_on: ubuntu-24.04-arm
     steps:
       - name: Prepare
         run: |
