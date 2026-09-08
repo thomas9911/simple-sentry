@@ -19,6 +19,8 @@ use tracing::{error, info};
 
 type Object = serde_json::Map<String, serde_json::Value>;
 
+#[cfg(feature = "mcp")]
+pub mod mcp;
 pub mod templates;
 pub mod time;
 pub mod ui;
@@ -136,7 +138,12 @@ async fn main() -> anyhow::Result<()> {
             "/ui/projects/:project_id/edit",
             get(ui::edit_project).put(update_project),
         )
-        .route("/api/:project_id/envelope/", post(handle_post))
+        .route("/api/:project_id/envelope/", post(handle_post));
+
+    #[cfg(feature = "mcp")]
+    let app = app.route_service("/mcp", mcp::build_service(app_state.clone()));
+
+    let app = app
         .route_layer(ServiceBuilder::new().layer(cors))
         .with_state(app_state);
 

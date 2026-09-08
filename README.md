@@ -45,3 +45,22 @@ just send-event
 # send multiple
 just send-event-all
 ```
+
+## MCP server
+
+Optional, opt-in via the `mcp` cargo feature (off by default so a plain build has zero MCP deps):
+
+```sh
+just run-mcp
+# or: cargo run --release --features mcp
+```
+
+This exposes a read-only MCP server at `POST /mcp` (streamable-HTTP) alongside the normal web UI, so an agent can query captured events while you debug locally. Tools: `list_projects`, `list_events`, `get_event`, `search_events`.
+
+Connect a client, e.g. Claude Code:
+
+```sh
+claude mcp add --transport http simple-sentry http://localhost:8080/mcp
+```
+
+By default the endpoint only accepts requests with a `localhost`/`127.0.0.1`/`::1` `Host` header — fine for local use, but it won't work out of the box behind a Docker service name or LAN IP.

@@ -7,10 +7,13 @@ fmt:
 run:
     cargo run --release
 
+run-mcp:
+    cargo run --release --features mcp
+
 dev-db:
     sqlx database create
     sqlx migrate run
-    cargo sqlx prepare
+    cargo sqlx prepare -- --features mcp
 
 send-event-seed:
     @just send-event-seed-0
