@@ -1,4 +1,4 @@
-Application.put_env(:sentry, :dsn, "http://test@localhost:8080/0")
+Application.put_env(:sentry, :dsn, "http://test@localhost:8080/2")
 
 Mix.install([:jason, :hackney, :sentry])
 
@@ -10,5 +10,5 @@ try do
   2 / 0
 rescue
   e ->
-    Sentry.capture_exception(e)
+    Sentry.capture_exception(e) |> IO.inspect
 end

@@ -1,4 +1,4 @@
-# Using the `rust-musl-builder` as base image, instead of 
+# Using the `rust-musl-builder` as base image, instead of
 # the official Rust toolchain
 FROM clux/muslrust:1.88.0-stable AS chef
 USER root
