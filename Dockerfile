@@ -1,6 +1,6 @@
 # Using the `rust-musl-builder` as base image, instead of
 # the official Rust toolchain
-FROM clux/muslrust:1.88.0-stable AS chef
+FROM clux/muslrust:1.98.1-stable AS chef
 USER root
 RUN cargo install cargo-chef
 WORKDIR /app
@@ -20,11 +20,11 @@ RUN case "$TARGETPLATFORM" in \
     esac
 COPY --from=planner /app/recipe.json recipe.json
 # Notice that we are specifying the --target flag!
-RUN cargo chef cook --release --target $(cat /tmp/rust-target) --recipe-path recipe.json
+RUN cargo chef cook --release --features mcp --target $(cat /tmp/rust-target) --recipe-path recipe.json
 COPY . .
-RUN cargo build --release --target $(cat /tmp/rust-target) --bin simple-sentry
+RUN cargo build --release --features mcp --target $(cat /tmp/rust-target) --bin simple-sentry
 
-FROM alpine:3.19 AS runtime
+FROM alpine:3.24 AS runtime
 RUN addgroup -S myuser && adduser -S myuser -G myuser
 COPY --from=builder /app/target/*/release/simple-sentry /usr/local/bin/
 USER myuser

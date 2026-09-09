@@ -19,6 +19,13 @@ pub struct DataContentsParameters {
     project: Option<i64>,
 }
 
+impl DataContentsParameters {
+    #[cfg(feature = "mcp")]
+    pub(crate) fn new(pointer: Option<i64>, project: Option<i64>) -> Self {
+        Self { pointer, project }
+    }
+}
+
 fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
 where
     D: Deserializer<'de>,
@@ -165,7 +172,7 @@ pub async fn get_data(State(app_state): State<AppState>) -> impl IntoResponse {
     templates::DataTemplate { projects }
 }
 
-async fn get_data_query(
+pub(crate) async fn get_data_query(
     pool: &Pool<Sqlite>,
     parameters: DataContentsParameters,
 ) -> sqlx::Result<Vec<LogListItem>> {
@@ -214,6 +221,13 @@ pub async fn get_data_contents(
             (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error").into_response()
         }
     }
+}
+
+#[cfg(feature = "mcp")]
+pub(crate) async fn get_event_query(pool: &Pool<Sqlite>, id: &str) -> sqlx::Result<LogGettItem> {
+    sqlx::query_file_as!(LogGettItem, "./sql/get_sentry_log.sql", id)
+        .fetch_one(pool)
+        .await
 }
 
 pub async fn get_data_content(
