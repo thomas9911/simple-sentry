@@ -63,4 +63,4 @@ Connect a client, e.g. Claude Code:
 claude mcp add --transport http simple-sentry http://localhost:8080/mcp
 ```
 
-By default the endpoint only accepts requests with a `localhost`/`127.0.0.1`/`::1` `Host` header — fine for local use, but it won't work out of the box behind a Docker service name or LAN IP.
+`Host`-header validation is disabled (accepts any hostname), so it works behind a Docker service name, Tailscale hostname, LAN IP, etc. This is fine for a local dev tool but would not be safe for a publicly reachable deployment — see the comment on `mcp::build_service`.

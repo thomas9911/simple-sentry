@@ -18,10 +18,13 @@ const ITERATION_SIZE: u32 = 20;
 const START_POINTER: i64 = i64::MAX;
 
 pub fn build_service(app_state: AppState) -> StreamableHttpService<SentryMcp, LocalSessionManager> {
+    // Local dev tool only (see README) — accept any Host header instead of the
+    // loopback-only default, so it's reachable via Docker service names, Tailscale
+    // hostnames, etc. Do not do this for a server that isn't purely local/trusted.
     StreamableHttpService::new(
         move || Ok(SentryMcp::new(app_state.clone())),
         LocalSessionManager::default().into(),
-        StreamableHttpServerConfig::default(),
+        StreamableHttpServerConfig::default().disable_allowed_hosts(),
     )
 }
 
